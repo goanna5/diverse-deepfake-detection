@@ -6,6 +6,26 @@ from tqdm import tqdm
 FRAMES_PER_VID = 5
 SAVE_PATH = "/Users/annastevens/Documents/testing"
 
+def setup() -> pd.DataFrame:
+    """Reads through dataset and creates df that links each vid to its ethnicity/label (real/fake) --> idk the actual
+    format of the dataset yet so this is a guess! 
+    """
+    records = []
+
+    # loop through files in format given and categorise
+
+    # test data for now:
+    records.append({
+        "name": "Milo",
+        "vid_filepath": f"{SAVE_PATH}/sample_vid.mov",
+        "label": "real",
+        "ethnicity": "dog"
+    })
+
+    df = pd.DataFrame(records)
+    return df
+
+
 def extract_img_frames(video_path: str) -> list[np.ndarray]:
     """Return evenly-spaced BGR frames from a video file.
     REF: claude was used to help make this function and https://www.geeksforgeeks.org/python/python-program-extract-frames-using-opencv/
@@ -40,10 +60,10 @@ def extract_img_frames(video_path: str) -> list[np.ndarray]:
     cap.release()
     return frames
 
-#print(len(extract_img_frames("/Users/annastevens/Downloads/sample_vid.mov")))
 
 def extract_all_img_frames(df: pd.DataFrame) -> pd.DataFrame:
     """ Extract 5 frames from each video for all vids in dataset
+    REF: claude was used to help enumerate through dataset - tqdm for nice loading
 
     Params:
     df: the data from the dataset (each entry in dataset will have name, filepath, label (real or fake), and ethnicity)
@@ -77,3 +97,9 @@ def extract_all_img_frames(df: pd.DataFrame) -> pd.DataFrame:
     frames_df = pd.DataFrame(frame_records)
     return frames_df
 
+
+if __name__ == "__main__":
+    #print(len(extract_img_frames("/Users/annastevens/Downloads/sample_vid.mov")))
+
+    sample_df = setup()
+    print(extract_all_img_frames(sample_df))
