@@ -12,8 +12,11 @@ def setup() -> pd.DataFrame:
 
     df = pd.read_csv("meta_data.csv")
 
+    # combine filename and path columns
+    df["vid_filepath"] = df["path"].str.cat(df["filename"])
+
     # drop unnecessary columns
-    df = df.drop(columns=["target1", "target2", "method", "type", "source"])
+    df = df.drop(columns=["target1", "target2", "method", "type", "source", "path", "filename"])
 
     # remove any rows with fake audio (not looking at this)
     df = df[df.category != "B"]
@@ -22,22 +25,22 @@ def setup() -> pd.DataFrame:
     # replace category A and C with real and fake
     df["category"] = df["category"].replace('A', 'real')
     df["category"] = df["category"].replace('C', 'fake')
-    
-    # rename columns
-    df.rename(columns={"category": "label", "filename": "vid_filename", "path": "vid_filepath"}, inplace=True)
+
+    # rename column
+    df.rename(columns={"category": "label"}, inplace=True)
     
     # add unique id column at start
     df.insert(0, "id", range(len(df)))
-    print(df)
 
 
     # test data for now:
     # records = []
     # records.append({
-    #     "name": "Milo",
-    #     "vid_filepath": f"{SAVE_PATH}/sample_vid.mov",
+    #     "id": "Milo",
     #     "label": "real",
-    #     "ethnicity": "dog"
+    #     "race": "dog",
+    #     "gender": "men",
+    #     "vid_filepath": f"{SAVE_PATH}/sample_vid.mov",
     # })
 
     # df = pd.DataFrame(records)
