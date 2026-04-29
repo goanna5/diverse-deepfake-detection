@@ -7,23 +7,41 @@ FRAMES_PER_VID = 5
 SAVE_PATH = "/Users/annastevens/Documents/testing"
 
 def setup() -> pd.DataFrame:
-    """Reads through dataset and creates df that links each vid to its ethnicity/label (real/fake) --> idk the actual
-    format of the dataset yet so this is a guess! 
+    """Create dataframe from CSV and preprocess data (remove unneccessary fields, entries, etc.)
     """
-    records = []
 
-    # loop through files in format given and categorise
+    df = pd.read_csv("meta_data.csv")
+
+    # drop unnecessary columns
+    df = df.drop(columns=["target1", "target2", "method", "type", "source"])
+
+    # remove any rows with fake audio (not looking at this)
+    df = df[df.category != "B"]
+    df = df[df.category != "D"]
+
+    # replace category A and C with real and fake
+    df["category"] = df["category"].replace('A', 'real')
+    df["category"] = df["category"].replace('C', 'fake')
+    
+    # rename columns
+    df.rename(columns={"category": "label", "filename": "vid_filename", "path": "vid_filepath"}, inplace=True)
+    
+    # add unique id column at start
+    df.insert(0, "id", range(len(df)))
+    print(df)
+
 
     # test data for now:
-    records.append({
-        "name": "Milo",
-        "vid_filepath": f"{SAVE_PATH}/sample_vid.mov",
-        "label": "real",
-        "ethnicity": "dog"
-    })
+    # records = []
+    # records.append({
+    #     "name": "Milo",
+    #     "vid_filepath": f"{SAVE_PATH}/sample_vid.mov",
+    #     "label": "real",
+    #     "ethnicity": "dog"
+    # })
 
-    df = pd.DataFrame(records)
-    return df
+    # df = pd.DataFrame(records)
+    # return df
 
 
 def extract_img_frames(video_path: str) -> list[np.ndarray]:
@@ -102,4 +120,4 @@ if __name__ == "__main__":
     #print(len(extract_img_frames("/Users/annastevens/Downloads/sample_vid.mov")))
 
     sample_df = setup()
-    print(extract_all_img_frames(sample_df))
+    #print(extract_all_img_frames(sample_df))
