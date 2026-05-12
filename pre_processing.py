@@ -4,7 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 
 FRAMES_PER_VID = 5
-PATH_PREFIX = "/Users/annastevens/Documents/dataset-subset"
+PATH_PREFIX = "/Users/annastevens/Documents/dataset-subset/"
 
 def setup() -> pd.DataFrame:
     """Create dataframe from CSV and preprocess data (remove unneccessary fields, entries, etc.)
@@ -13,7 +13,7 @@ def setup() -> pd.DataFrame:
     df = pd.read_csv("meta_data.csv")
 
     # combine filename and path columns
-    df["vid_filepath"] = PATH_PREFIX + df["path"].str.cat(df["filename"])
+    df["vid_filepath"] = PATH_PREFIX + df["path"].str.cat(df["filename"], sep="/")
 
     # drop unnecessary columns
     df = df.drop(columns=["target1", "target2", "method", "type", "source", "path", "filename"])
@@ -92,8 +92,8 @@ def extract_all_img_frames(df: pd.DataFrame) -> pd.DataFrame:
         # loop through each frame in vid
         for i, frame_matrix in enumerate(frames):
             # save image testing
-            frame_filepath = f"{PATH_PREFIX}/frames/{id}_{i}.jpg"
-            #cv2.imwrite(frame_filepath, frame_matrix)
+            frame_filepath = f"{PATH_PREFIX}frames/{id}_{i}.jpg"
+            cv2.imwrite(frame_filepath, frame_matrix)
 
             frame_records.append({
                 "id": id,
@@ -111,8 +111,8 @@ def extract_all_img_frames(df: pd.DataFrame) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    #print(len(extract_img_frames("/Users/annastevens/Downloads/sample_vid.mov")))
+    # sample_df = setup()
+    # extract_all_img_frames(sample_df)
 
-    sample_df = setup()
-    print(sample_df)
-    #print(extract_all_img_frames(sample_df))
+    # commented out for now but in final it needs to be here! TODO
+    pass
