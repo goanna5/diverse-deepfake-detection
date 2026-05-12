@@ -4,7 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 
 FRAMES_PER_VID = 5
-SAVE_PATH = "/Users/annastevens/Documents/testing"
+PATH_PREFIX = "/Users/annastevens/Documents/dataset-subset"
 
 def setup() -> pd.DataFrame:
     """Create dataframe from CSV and preprocess data (remove unneccessary fields, entries, etc.)
@@ -13,7 +13,7 @@ def setup() -> pd.DataFrame:
     df = pd.read_csv("meta_data.csv")
 
     # combine filename and path columns
-    df["vid_filepath"] = df["path"].str.cat(df["filename"])
+    df["vid_filepath"] = PATH_PREFIX + df["path"].str.cat(df["filename"])
 
     # drop unnecessary columns
     df = df.drop(columns=["target1", "target2", "method", "type", "source", "path", "filename"])
@@ -32,19 +32,7 @@ def setup() -> pd.DataFrame:
     # add unique id column at start
     df.insert(0, "id", range(len(df)))
 
-
-    # test data for now:
-    # records = []
-    # records.append({
-    #     "id": "Milo",
-    #     "label": "real",
-    #     "race": "dog",
-    #     "gender": "men",
-    #     "vid_filepath": f"{SAVE_PATH}/sample_vid.mov",
-    # })
-
-    # df = pd.DataFrame(records)
-    # return df
+    return df
 
 
 def extract_img_frames(video_path: str) -> list[np.ndarray]:
@@ -98,23 +86,26 @@ def extract_all_img_frames(df: pd.DataFrame) -> pd.DataFrame:
     # loop through each data row in dataset df
     for _, row in tqdm(df.iterrows(), total=len(df), desc="Extracting frames"):
         vid_filepath = row["vid_filepath"]
-        name = row["name"]
+        id = row["id"]
         frames = extract_img_frames(vid_filepath)
 
         # loop through each frame in vid
         for i, frame_matrix in enumerate(frames):
             # save image testing
-            frame_filepath = f"{SAVE_PATH}/{name}_frame{i}.jpg"
-            cv2.imwrite(frame_filepath, frame_matrix)
+            frame_filepath = f"{PATH_PREFIX}/frames/{id}_{i}.jpg"
+            #cv2.imwrite(frame_filepath, frame_matrix)
 
             frame_records.append({
-                "name": name,
+                "id": id,
+                "label": row["label"],
+                "race": row["race"],
+                "gender": row["gender"],
                 "vid_filepath": vid_filepath,
                 "frame_filepath": frame_filepath,
                 "frame_idx": i,
-                "label": row["label"],
-                "ethnicity": row["ethnicity"]
+                #"frame_matrix": frame_matrix,
             })
+            
     frames_df = pd.DataFrame(frame_records)
     return frames_df
 
@@ -123,4 +114,5 @@ if __name__ == "__main__":
     #print(len(extract_img_frames("/Users/annastevens/Downloads/sample_vid.mov")))
 
     sample_df = setup()
+    print(sample_df)
     #print(extract_all_img_frames(sample_df))
