@@ -64,21 +64,21 @@ def extract_img_frames(video_path: str) -> list[np.ndarray]:
         success, frame = cap.read()
         if success:
             frames.append(frame)
-            #cv2.imwrite(f"/frame{idx}.jpg", frame)
 
     cap.release()
     return frames
 
 
-def extract_all_img_frames(df: pd.DataFrame) -> pd.DataFrame:
+def extract_all_img_frames(df: pd.DataFrame, save_imgs: bool = False) -> pd.DataFrame:
     """ Extract 5 frames from each video for all vids in dataset
     REF: claude was used to help enumerate through dataset - tqdm for nice loading
 
     Params:
     df: the data from the dataset (each entry in dataset will have name, filepath, label (real or fake), and ethnicity)
+    save_imgs: bool, if true will save image files to specified location
 
     Returns:
-    new dataframe with the img frame data instead of vid data
+    new dataframe with the img frame data + vid data
     """
 
     frame_records = []
@@ -91,9 +91,10 @@ def extract_all_img_frames(df: pd.DataFrame) -> pd.DataFrame:
 
         # loop through each frame in vid
         for i, frame_matrix in enumerate(frames):
-            # save image testing
             frame_filepath = f"{PATH_PREFIX}frames/{id}_{i}.jpg"
-            cv2.imwrite(frame_filepath, frame_matrix)
+            
+            if save_imgs:
+                cv2.imwrite(frame_filepath, frame_matrix)
 
             frame_records.append({
                 "id": id,
@@ -103,7 +104,7 @@ def extract_all_img_frames(df: pd.DataFrame) -> pd.DataFrame:
                 "vid_filepath": vid_filepath,
                 "frame_filepath": frame_filepath,
                 "frame_idx": i,
-                #"frame_matrix": frame_matrix,
+                "frame_matrix": frame_matrix,
             })
             
     frames_df = pd.DataFrame(frame_records)
@@ -111,8 +112,6 @@ def extract_all_img_frames(df: pd.DataFrame) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    # sample_df = setup()
-    # extract_all_img_frames(sample_df)
-
-    # commented out for now but in final it needs to be here! TODO
-    pass
+    df = setup()
+    frames = extract_all_img_frames(df, False)
+    print(frames)
