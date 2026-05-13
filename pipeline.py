@@ -51,9 +51,10 @@ AUGMENTATION_TECHNIQUES = {
 
 
 
+
 if __name__ == "__main__":
 
-    frames = extract_all_img_frames(setup(), False)
+    frames = get_frames(subset=True, save_imgs=False)
     print(frames.iloc[0, 5])
     print(type(Image.open(frames.iloc[0, 5])))
     print(type(frames.iloc[0, 7]))

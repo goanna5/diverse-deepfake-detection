@@ -4,16 +4,15 @@ import pandas as pd
 from tqdm import tqdm
 
 FRAMES_PER_VID = 5
-PATH_PREFIX = "/Users/annastevens/Documents/dataset-subset/"
 
-def setup() -> pd.DataFrame:
+def get_df(path_prefix) -> pd.DataFrame:
     """Create dataframe from CSV and preprocess data (remove unneccessary fields, entries, etc.)
     """
 
     df = pd.read_csv("meta_data.csv")
 
     # combine filename and path columns
-    df["vid_filepath"] = PATH_PREFIX + df["path"].str.cat(df["filename"], sep="/")
+    df["vid_filepath"] = path_prefix + df["path"].str.cat(df["filename"], sep="/")
 
     # drop unnecessary columns
     df = df.drop(columns=["target1", "target2", "method", "type", "source", "path", "filename"])
@@ -69,7 +68,7 @@ def extract_img_frames(video_path: str) -> list[np.ndarray]:
     return frames
 
 
-def extract_all_img_frames(df: pd.DataFrame, save_imgs: bool = False) -> pd.DataFrame:
+def extract_all_img_frames(df: pd.DataFrame, path_prefix: str, save_imgs: bool = False) -> pd.DataFrame:
     """ Extract 5 frames from each video for all vids in dataset
     REF: claude was used to help enumerate through dataset - tqdm for nice loading
 
@@ -91,7 +90,7 @@ def extract_all_img_frames(df: pd.DataFrame, save_imgs: bool = False) -> pd.Data
 
         # loop through each frame in vid
         for i, frame_matrix in enumerate(frames):
-            frame_filepath = f"{PATH_PREFIX}frames/{id}_{i}.jpg"
+            frame_filepath = f"{path_prefix}frames/{id}_{i}.jpg"
             
             if save_imgs:
                 cv2.imwrite(frame_filepath, frame_matrix)
@@ -104,14 +103,21 @@ def extract_all_img_frames(df: pd.DataFrame, save_imgs: bool = False) -> pd.Data
                 "vid_filepath": vid_filepath,
                 "frame_filepath": frame_filepath,
                 "frame_idx": i,
-                "frame_matrix": frame_matrix,
             })
             
     frames_df = pd.DataFrame(frame_records)
     return frames_df
 
+def get_frames(subset: bool, save_imgs: bool = False):
+    """
+    path_prefix = "/Users/annastevens/Documents/dataset-subset/" # subset
+    path_prefix = "../Dataset/" # actual/analysing
+    """
+    path_prefix = "/Users/annastevens/Documents/dataset-subset/" if subset else "../Dataset/"
+
+    df = get_df(path_prefix)
+    return extract_all_img_frames(df, path_prefix, save_imgs)
+
 
 if __name__ == "__main__":
-    df = setup()
-    frames = extract_all_img_frames(df, False)
-    print(frames)
+    print(get_frames(subset=True, save_imgs=False).head)
