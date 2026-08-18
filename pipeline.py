@@ -10,11 +10,13 @@ from pre_processing import *
 import timm
 import torch
 from torchvision import transforms
+import numpy as np
 
 # Image degradations/corruptions/augmentation
 COMPRESSION_QUALITY = 25
 BLUR_RADIUS = 2.0
 RESIZE_SCALE = 0.5
+NOISE_SIGMA = 25
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -45,6 +47,14 @@ def resize(img: Image.Image, scale: float = RESIZE_SCALE) -> Image.Image:
     downscaled = img.resize(small_size, Image.LANCZOS)
     return downscaled.resize((width, height), Image.LANCZOS)
 
+def gaussian_noise(img: Image.Image, sigma: float = NOISE_SIGMA) -> Image.Image:
+    """
+    """
+    img_array = np.array(img.convert("RGB")).astype(np.float32)
+    noise = np.random.normal(0, sigma, img_array.shape)
+    noise_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
+    return Image.fromarray(noise_array)
+
 AUGMENTATION_TECHNIQUES = {
     "clean": clean,
     "compression": compress,
@@ -59,13 +69,6 @@ def load_xception(checkpoint_path: str):
     """loads XceptionNet with FF++ checkpoint path for weights
     """
     model = timm.create_model("xception", pretrained=True, num_classes=2)
-    state = torch.load(checkpoint_path, map_location=DEVICE)
-
-    # FaceForensics++ checkpoints are sometimes wrapped in a dict
-    if "model" in state:
-        state = state["model"]
-
-    model.load_state_dict(state, strict=False)
     model.eval()
     print("XceptionNet loaded!")
     return model.to(DEVICE)
