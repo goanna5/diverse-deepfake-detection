@@ -1,7 +1,8 @@
 # STEPS:
 # - apply techniques (compression, blur, resize)
 # - load models from hugging face
-# - run combo of each frame * each model * each technique
+# - fine tune models (hopefully)
+# - run combo of each frame * each model * each technique -> actually do this in main
 # - thats actually quite alot of combos = 160000ish * 5 * 3 * 3... oops
 
 from PIL import Image, ImageFilter
@@ -48,7 +49,8 @@ def resize(img: Image.Image, scale: float = RESIZE_SCALE) -> Image.Image:
     return downscaled.resize((width, height), Image.LANCZOS)
 
 def gaussian_noise(img: Image.Image, sigma: float = NOISE_SIGMA) -> Image.Image:
-    """
+    """ random may need to be moved to where this func is called because it may 
+    not be random each time
     """
     img_array = np.array(img.convert("RGB")).astype(np.float32)
     noise = np.random.normal(0, sigma, img_array.shape)
@@ -65,7 +67,7 @@ AUGMENTATION_TECHNIQUES = {
 # deepfake detection models used Claude to assist with the code for this
 
 ## double check xception after gaining access
-def load_xception(checkpoint_path: str):
+def load_xception():
     """loads XceptionNet with FF++ checkpoint path for weights
     """
     model = timm.create_model("xception", pretrained=True, num_classes=2)
@@ -105,6 +107,59 @@ def get_transform_for_timm(model):
     ])
 
 
+
+# fine tuning so the models are deepfake detectors 
+# (Claude was used to help develop this)
+def freeze(model, unfreeze_last_n_params=20):
+    """Freeze all params, unfreeze classifier head,
+    and last n params of backbone
+    """
+    for p in model.parameters():
+        p.requires_grad = False
+
+    for p in model.get_classifier().parameters():
+        p.requires_grad = True
+
+    if unfreeze_last_n_params > 0:
+        all_params = list(model.parameters())
+        for p in all_params[-unfreeze_last_n_params:]:
+            p.requires_grad = True
+    return model
+
+def fine_tune(model, train_loader, val_loader, epochs=10, lr=1e-4, device=DEVICE):
+    model.to(device)
+    optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
+    criterion = torch.nn.CrossEntropyLoss()
+
+    best_val_acc = 0
+    for epoch in range(epochs):
+        model.train()
+        for imgs, labels in train_loader:
+            imgs, labels = imgs.to(device), labels.to(device)
+            optimiser.zero_grad()
+            loss = criterion(model(imgs), labels)
+            loss.backward()
+            optimiser.step()
+
+        val_acc = evaluate(model, val_loader, device)
+        print(f"Epoch: {epoch + 1}/{epochs} | val_acc: {val_acc}")
+
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            torch.save(model.state_dict(), f"best_model.pth")
+
+    return model
+
+@torch.no_grad()
+def evaluate(model, loader, device=DEVICE):
+    model.eval()
+    correct, total = 0, 0
+    for imgs, labels in loader:
+        imgs, labels = imgs.to(device), labels.to(device)
+        preds = model(imgs).argmax(dim=1)
+        correct += (preds == labels).sum().item()
+        total += labels.size(0)
+    return correct / total
 
 
 if __name__ == "__main__":
