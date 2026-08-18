@@ -62,7 +62,48 @@ AUGMENTATION_TECHNIQUES = {
     "compression": compress,
     "blur": blur,
     "resize": resize,
+    "noise": gaussian_noise,
 }
+
+# dataset
+class Dataset(torch.utils.data.Dataset):
+    def __init__(self, frames_df, transform, technique, label_map):
+        self.frames_df = frames_df.reset_index(drop=True)
+        self.transform = transform
+        self.technique = technique
+        self.label_map = label_map 
+
+    def __len__(self):
+        return len(self.frames_df)
+
+    def __getitem__(self, idx):
+        row = self.frames_df.iloc[idx]
+
+        img = Image.open(row["frame_filepath"]).convert("RGB")
+        img = self.technique(img)
+        img = self.transform(img)
+        label = row["label"]
+
+        if self.label_map is not None:
+            label = self.label_map[label]
+        label = torch.tensor(int(label), dtype=torch.long)
+
+        return img, label
+
+# split videos into train-test before extracting frames to avoid bias
+def split_by_vid(frames_df, test_portion=0.2, seed=42):
+    vids = frames_df["vid_filepath"].unique()
+    rng = np.random.default_rng(seed)
+    rng.shuffle(vids)
+
+    cutoff = int(len(vids) * (1 - test_portion))
+    train_vids, test_vids = vids[:cutoff], vids[cutoff:]
+
+    train_df = frames_df[frames_df["vid_filepath"].isin(train_vids)]
+    test_df = frames_df[frames_df["vid_filepath"].isin(test_vids)]
+
+    return train_df, test_df
+
 
 # deepfake detection models used Claude to assist with the code for this
 
@@ -106,7 +147,11 @@ def get_transform_for_timm(model):
         transforms.Normalize(mean=mean, std=std),
     ])
 
-
+MODELS = {
+    "xception": load_xception,
+    "efficientnet": load_efficientnet,
+    "swin": load_swin,
+}
 
 # fine tuning so the models are deepfake detectors 
 # (Claude was used to help develop this)
@@ -126,36 +171,36 @@ def freeze(model, unfreeze_last_n_params=20):
             p.requires_grad = True
     return model
 
-def fine_tune(model, train_loader, val_loader, epochs=10, lr=1e-4, device=DEVICE):
-    model.to(device)
+def fine_tune(model, train_loader, test_loader, epochs=10, lr=1e-4, model_name="model"):
+    model.to(DEVICE)
     optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
     criterion = torch.nn.CrossEntropyLoss()
 
-    best_val_acc = 0
+    best_test_acc = 0
     for epoch in range(epochs):
         model.train()
         for imgs, labels in train_loader:
-            imgs, labels = imgs.to(device), labels.to(device)
+            imgs, labels = imgs.to(DEVICE), labels.to(DEVICE)
             optimiser.zero_grad()
             loss = criterion(model(imgs), labels)
             loss.backward()
             optimiser.step()
 
-        val_acc = evaluate(model, val_loader, device)
-        print(f"Epoch: {epoch + 1}/{epochs} | val_acc: {val_acc}")
+        test_acc = evaluate(model, test_loader)
+        print(f"Epoch: {epoch + 1}/{epochs} | test_acc: {test_acc}")
 
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
-            torch.save(model.state_dict(), f"best_model.pth")
+        if test_acc > best_test_acc:
+            best_test_acc = test_acc
+            torch.save(model.state_dict(), f"best_{model_name}.pth")
 
     return model
 
 @torch.no_grad()
-def evaluate(model, loader, device=DEVICE):
+def evaluate(model, loader):
     model.eval()
     correct, total = 0, 0
     for imgs, labels in loader:
-        imgs, labels = imgs.to(device), labels.to(device)
+        imgs, labels = imgs.to(DEVICE), labels.to(DEVICE)
         preds = model(imgs).argmax(dim=1)
         correct += (preds == labels).sum().item()
         total += labels.size(0)
@@ -168,7 +213,12 @@ if __name__ == "__main__":
     # with Image.open(frames.iloc[0]['frame_filepath']) as im:
     #     new = resize(im)
     eff_net = load_efficientnet()
-    print(get_transform_for_timm(eff_net))
+    eff_net = freeze(eff_net, unfreeze_last_n_params=20)
+    transform = get_transform_for_timm(eff_net)
+
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
+    print(fine_tune(eff_net, train_loader, test_loader))
     # print(frames.iloc[0, 5])
     # print(type(Image.open(frames.iloc[0, 5])))
     # print(type(frames.iloc[0, 7]))
