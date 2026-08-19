@@ -5,11 +5,14 @@ from tqdm import tqdm
 
 FRAMES_PER_VID = 5
 
-def get_df(path_prefix) -> pd.DataFrame:
+def get_df(path_prefix, subset) -> pd.DataFrame:
     """Create dataframe from CSV and preprocess data (remove unneccessary fields, entries, etc.)
     """
 
-    df = pd.read_csv("meta_data.csv")
+    if subset:
+        df = pd.read_csv("meta_data_subset.csv")
+    else:
+        df = pd.read_csv("meta_data.csv")
 
     # combine filename and path columns
     df["vid_filepath"] = path_prefix + df["path"].str.cat(df["filename"], sep="/")
@@ -19,11 +22,11 @@ def get_df(path_prefix) -> pd.DataFrame:
 
     # remove any rows with fake audio (not looking at this)
     df = df[df.category != "B"]
-    df = df[df.category != "D"]
+    df = df[df.category != "C"]
 
-    # replace category A and C with real and fake
+    # replace category A and D with real and fake
     df["category"] = df["category"].replace('A', 'real')
-    df["category"] = df["category"].replace('C', 'fake')
+    df["category"] = df["category"].replace('D', 'fake')
 
     # rename column
     df.rename(columns={"category": "label"}, inplace=True)
@@ -113,9 +116,10 @@ def get_frames(subset: bool, save_imgs: bool = False):
     path_prefix = "/Users/annastevens/Documents/dataset-subset/" # subset
     path_prefix = "../Dataset/" # actual/analysing
     """
-    path_prefix = "/Users/annastevens/Documents/dataset-subset/" if subset else "../Dataset/"
+    #path_prefix = "/Users/annastevens/Documents/dataset-subset/" if subset else "../Dataset/"
+    path_prefix = "../Dataset/"
 
-    df = get_df(path_prefix)
+    df = get_df(path_prefix, subset)
     return extract_all_img_frames(df, path_prefix, save_imgs)
 
 

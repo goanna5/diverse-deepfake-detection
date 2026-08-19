@@ -65,6 +65,11 @@ AUGMENTATION_TECHNIQUES = {
     "noise": gaussian_noise,
 }
 
+LABEL_MAP = {
+    "real": 0,
+    "fake": 1,
+}
+
 # dataset
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, frames_df, transform, technique, label_map):
@@ -82,7 +87,7 @@ class Dataset(torch.utils.data.Dataset):
         img = Image.open(row["frame_filepath"]).convert("RGB")
         img = self.technique(img)
         img = self.transform(img)
-        label = row["label"]
+        label = LABEL_MAP[row["label"]]
 
         if self.label_map is not None:
             label = self.label_map[label]

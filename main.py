@@ -36,8 +36,8 @@ def main():
         model = freeze(model, unfreeze_last_n_params=20)
         transform = get_transform_for_timm(model)
 
-        train_dataset = Dataset(train_df, transform, label_map)
-        test_dataset = Dataset(train_df, transform, label_map)
+        train_dataset = Dataset(train_df, transform, clean, label_map)
+        test_dataset = Dataset(train_df, transform, clean, label_map)
 
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
         test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
