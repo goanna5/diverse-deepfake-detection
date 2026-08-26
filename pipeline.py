@@ -97,15 +97,15 @@ class Dataset(torch.utils.data.Dataset):
 
 # split videos into train-test before extracting frames to avoid bias
 def split_by_vid(frames_df, test_portion=0.2, seed=42):
-    vids = frames_df["vid_filepath"].unique()
+    vids = frames_df["source"].unique()
     rng = np.random.default_rng(seed)
     rng.shuffle(vids)
 
     cutoff = int(len(vids) * (1 - test_portion))
     train_vids, test_vids = vids[:cutoff], vids[cutoff:]
 
-    train_df = frames_df[frames_df["vid_filepath"].isin(train_vids)]
-    test_df = frames_df[frames_df["vid_filepath"].isin(test_vids)]
+    train_df = frames_df[frames_df["source"].isin(train_vids)]
+    test_df = frames_df[frames_df["source"].isin(test_vids)]
 
     return train_df, test_df
 

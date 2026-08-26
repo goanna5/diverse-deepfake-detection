@@ -18,7 +18,7 @@ def get_df(path_prefix, subset) -> pd.DataFrame:
     df["vid_filepath"] = path_prefix + df["path"].str.cat(df["filename"], sep="/")
 
     # drop unnecessary columns
-    df = df.drop(columns=["target1", "target2", "method", "type", "source", "path", "filename"])
+    df = df.drop(columns=["target1", "target2", "method", "type", "path", "filename"])
 
     # remove any rows with fake audio (not looking at this)
     df = df[df.category != "B"]
@@ -89,6 +89,7 @@ def extract_all_img_frames(df: pd.DataFrame, path_prefix: str, save_imgs: bool =
     for _, row in tqdm(df.iterrows(), total=len(df), desc="Extracting frames"):
         vid_filepath = row["vid_filepath"]
         id = row["id"]
+        source = row["source"]
         frames = extract_img_frames(vid_filepath)
 
         # loop through each frame in vid
@@ -106,6 +107,7 @@ def extract_all_img_frames(df: pd.DataFrame, path_prefix: str, save_imgs: bool =
                 "vid_filepath": vid_filepath,
                 "frame_filepath": frame_filepath,
                 "frame_idx": i,
+                "source": row["source"],
             })
             
     frames_df = pd.DataFrame(frame_records)
