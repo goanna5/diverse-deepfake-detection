@@ -121,12 +121,22 @@ def load_xception():
     print("XceptionNet loaded!")
     return model.to(DEVICE)
 
-def load_efficientnet():
+def load_efficientnet4():
     """EfficientNet-B4 from timm with pretrained weights from ImageNet
     """
     model = timm.create_model("efficientnet_b4", pretrained=True, num_classes=2)
+
     model.eval()
     print("EfficientNet-B4 loaded!")
+    return model.to(DEVICE)
+
+def load_efficientnet7():
+    """EfficientNet-B7 from timm with pretrained weights from ImageNet
+    """
+    model = timm.create_model("tf_efficientnet_b7", pretrained=True, num_classes=2)
+
+    model.eval()
+    print("EfficientNet-B7 loaded!")
     return model.to(DEVICE)
 
 def load_swin():
@@ -153,9 +163,10 @@ def get_transform_for_timm(model):
     ])
 
 MODELS = {
-    "xception": load_xception,
-    "efficientnet": load_efficientnet,
-    "swin": load_swin,
+#    "xception": load_xception,
+     #"efficientnet4": load_efficientnet4,
+     #"efficientnet7": load_efficientnet7,
+     "swin": load_swin,
 }
 
 # fine tuning so the models are deepfake detectors 
@@ -213,17 +224,17 @@ def evaluate(model, loader):
 
 
 if __name__ == "__main__":
-
+    pass
     # frames = get_frames(subset=True, save_imgs=False)
     # with Image.open(frames.iloc[0]['frame_filepath']) as im:
     #     new = resize(im)
-    eff_net = load_efficientnet()
-    eff_net = freeze(eff_net, unfreeze_last_n_params=20)
-    transform = get_transform_for_timm(eff_net)
+    # eff_net = load_efficientnet()
+    # eff_net = freeze(eff_net, unfreeze_last_n_params=20)
+    # transform = get_transform_for_timm(eff_net)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
-    print(fine_tune(eff_net, train_loader, test_loader))
-    # print(frames.iloc[0, 5])
-    # print(type(Image.open(frames.iloc[0, 5])))
-    # print(type(frames.iloc[0, 7]))
+    # train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
+    # test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
+    # print(fine_tune(eff_net, train_loader, test_loader))
+    # # print(frames.iloc[0, 5])
+    # # print(type(Image.open(frames.iloc[0, 5])))
+    # # print(type(frames.iloc[0, 7]))

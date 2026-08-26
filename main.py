@@ -1,4 +1,5 @@
 from pipeline import *
+import time
 
 @torch.no_grad()
 def evaluate_technique(model, frames_df, technique_function, transform, label_map=None, batch_size=64):
@@ -32,6 +33,7 @@ def main():
 
     trained_models = {}
     for name, loader_function in MODELS.items():
+        start = time.time()
         model = loader_function()
         model = freeze(model, unfreeze_last_n_params=20)
         transform = get_transform_for_timm(model)
@@ -46,8 +48,12 @@ def main():
         trained_models[name] = (model, transform)
 
         results_df = run_pipeline(trained_models, test_df, label_map=label_map)
-        results_df.to_csv("final_results.csv", index=False)
+        filename = f"final_results_{name}.csv"
+        results_df.to_csv(filename, index=False)
         print(results_df)
+        finish = time.time()
+        print(f"time to run: {(finish - start) / 1000}")
+
 
 if __name__ == "__main__":
     main()
