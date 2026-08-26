@@ -163,10 +163,10 @@ def get_transform_for_timm(model):
     ])
 
 MODELS = {
-#    "xception": load_xception,
-     #"efficientnet4": load_efficientnet4,
-     #"efficientnet7": load_efficientnet7,
-     "swin": load_swin,
+    "xception": load_xception,
+    "efficientnet4": load_efficientnet4,
+    "efficientnet7": load_efficientnet7,
+    "swin": load_swin,
 }
 
 # fine tuning so the models are deepfake detectors 

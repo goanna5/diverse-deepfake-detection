@@ -39,7 +39,7 @@ def main():
         transform = get_transform_for_timm(model)
 
         train_dataset = Dataset(train_df, transform, clean, label_map)
-        test_dataset = Dataset(train_df, transform, clean, label_map)
+        test_dataset = Dataset(test_df, transform, clean, label_map)
 
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
         test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
@@ -47,12 +47,14 @@ def main():
         model = fine_tune(model, train_loader, test_loader, epochs=5, model_name=name)
         trained_models[name] = (model, transform)
 
-        results_df = run_pipeline(trained_models, test_df, label_map=label_map)
-        filename = f"final_results_{name}.csv"
-        results_df.to_csv(filename, index=False)
-        print(results_df)
         finish = time.time()
-        print(f"time to run: {(finish - start) / 1000}")
+        print(f"time to run {name}: {finish - start}s")
+
+    results_df = run_pipeline(trained_models, test_df, label_map=label_map)
+    filename = f"final_results_{name}_{time.time()}.csv"
+    results_df.to_csv(filename, index=False)
+    print(results_df)
+    
 
 
 if __name__ == "__main__":
