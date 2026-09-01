@@ -6,19 +6,58 @@ def evaluate_technique(model, frames_df, technique_function, transform, label_ma
     dataset = Dataset(frames_df, transform, technique_function, label_map)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-    return evaluate(model, loader)
+    correct = predict_correct(model, loader)
+    result_df = frames_df.reset_index(drop=True).copy()
+    result_df["correct"] = correct
+    return result_df
 
 def run_pipeline(models: dict, frames_df, seed=42, label_map=None):
-    
-    eval_df = frames_df
-
     results = []
     for model_name, (model, transform) in models.items():
         for technique_name, technique_function in AUGMENTATION_TECHNIQUES.items():
-            acc = evaluate_technique(model, frames_df, technique_function, transform, label_map)
+            result_df = evaluate_technique(model, frames_df, technique_function, transform, label_map)
 
-            print(f"{model_name}, {technique_name}, acc={acc}")
-            results.append({"model": model_name, "technique": technique_name, "accuracy": acc})
+            # for all
+            results.append({"model": model_name,
+                                "technique": technique_name,
+                                "gender": "all",
+                                "race": "all",
+                                "n": len(result_df),
+                                "accuracy": result_df["correct"].mean(),
+                                })
+
+            # by gender
+            for gender, gender_df in result_df.groupby("gender"):
+                results.append({"model": model_name,
+                                    "technique": technique_name,
+                                    "gender": gender,
+                                    "race": "all",
+                                    "n": len(gender_df),
+                                    "accuracy": gender_df["correct"].mean(),
+                                    })
+
+            # by race/ethncity
+            for race, race_df in result_df.groupby("race"):
+                results.append({"model": model_name,
+                                    "technique": technique_name,
+                                    "gender": "all",
+                                    "race": race,
+                                    "n": len(race_df),
+                                    "accuracy": race_df["correct"].mean(),
+                                    })
+
+            # by race/ethnicity and gender
+            for (race, gender), race_gender_df in result_df.groupby(["race", "gender"]):
+                results.append({"model": model_name,
+                                    "technique": technique_name,
+                                    "gender": gender,
+                                    "race": race,
+                                    "n": len(race_gender_df),
+                                    "accuracy": race_gender_df["correct"].mean(),
+                                    })
+
+     
+            print(f"Finished running {model_name}, {technique_name}")
 
     return pd.DataFrame(results)
 
