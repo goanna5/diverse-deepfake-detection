@@ -223,15 +223,16 @@ def evaluate(model, loader):
     return correct / total
 
 @torch.no_grad()
-def predict_correct(model, loader):
-    """creates a list of bools in dataset order"""
+def predict(model, loader):
+    """creates lists of predications and labels in dataset order"""
     model.eval()
-    correct = []
+    all_preds, all_labels = [], []
     for imgs, labels in loader:
         imgs, labels = imgs.to(DEVICE), labels.to(DEVICE)
         preds = model(imgs).argmax(dim=1)
-        correct.extend((preds == labels).cpu().tolist())
-    return correct
+        all_preds.extend(preds.cpu().tolist())
+        all_labels.extend(labels.cpu().tolist())
+    return all_preds, all_labels
 
 if __name__ == "__main__":
     pass

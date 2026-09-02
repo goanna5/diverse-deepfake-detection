@@ -89,8 +89,11 @@ def extract_all_img_frames(df: pd.DataFrame, path_prefix: str, save_imgs: bool =
     for _, row in tqdm(df.iterrows(), total=len(df), desc="Extracting frames"):
         vid_filepath = row["vid_filepath"]
         id = row["id"]
-        source = row["source"]
         frames = extract_img_frames(vid_filepath)
+
+        # skip if it failed (didn't extract 5 frames)
+        if len(frames) != FRAMES_PER_VID:
+            continue
 
         # loop through each frame in vid
         for i, frame_matrix in enumerate(frames):
