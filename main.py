@@ -17,7 +17,7 @@ def evaluate_technique(model, frames_df, technique_function, transform, label_ma
 def get_metrics(df):
     """gets the precision, recall, and F1 values from the given df
     """
-    precision, recall, f1 = precision_recall_fscore_support(df["label_idx"], df["pred"], average="binary", pos_label=1, zero_division=0)
+    precision, recall, f1, _ = precision_recall_fscore_support(df["label_idx"], df["pred"], average="binary", pos_label=1, zero_division=0)
 
     return precision, recall, f1
 
