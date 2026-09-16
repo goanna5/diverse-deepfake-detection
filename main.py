@@ -1,6 +1,7 @@
 from pipeline import *
 import time
 from sklearn.metrics import precision_recall_fscore_support
+from torch.utils.data import WeightedRandomSampler
 
 @torch.no_grad()
 def evaluate_technique(model, frames_df, technique_function, transform, label_map=None, batch_size=64):
@@ -14,12 +15,21 @@ def evaluate_technique(model, frames_df, technique_function, transform, label_ma
     result_df["correct"] = result_df["pred"] == result_df["label_idx"]
     return result_df
 
+
 def get_metrics(df):
     """gets the precision, recall, and F1 values from the given df
     """
     precision, recall, f1, _ = precision_recall_fscore_support(df["label_idx"], df["pred"], average="binary", pos_label=1, zero_division=0)
 
     return precision, recall, f1
+
+
+def make_weighted_sampler(df, label="label"):
+    labels = df[label].map(LABEL_MAP).values
+    class_counts = np.bincount(labels)
+    sample_weights = (1.0 / class_counts)[labels]
+    return WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
+
 
 def run_pipeline(models: dict, frames_df, seed=42, label_map=None):
     results = []
@@ -87,6 +97,7 @@ def run_pipeline(models: dict, frames_df, seed=42, label_map=None):
 
     return pd.DataFrame(results)
 
+
 def main():
     """ This function should: fetch data, run preprocessing, run pipeline, run results calc
     run combo of each frame * each model * each technique
@@ -106,7 +117,8 @@ def main():
         train_dataset = Dataset(train_df, transform, clean, label_map)
         test_dataset = Dataset(test_df, transform, clean, label_map)
 
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
+        sampler = make_weighted_sampler(train_df)
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32, sampler=sampler, num_workers=4)
         test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
 
         model = fine_tune(model, train_loader, test_loader, epochs=5, model_name=name)

@@ -96,16 +96,22 @@ class Dataset(torch.utils.data.Dataset):
         return img, label
 
 # split videos into train-test before extracting frames to avoid bias
+# additionally, ensure theres equal ratio of real and fake
 def split_by_vid(frames_df, test_portion=0.2, seed=42):
-    vids = frames_df["source"].unique()
     rng = np.random.default_rng(seed)
-    rng.shuffle(vids)
+    train_parts, test_parts = [], []
 
-    cutoff = int(len(vids) * (1 - test_portion))
-    train_vids, test_vids = vids[:cutoff], vids[cutoff:]
+    for _, group in frames_df.groupby("label"):
+        vids = group["source"].unique()
+        rng.shuffle(vids)
 
-    train_df = frames_df[frames_df["source"].isin(train_vids)]
-    test_df = frames_df[frames_df["source"].isin(test_vids)]
+        cutoff = int(len(vids) * (1 - test_portion))
+        train_vids, test_vids = vids[:cutoff], vids[cutoff:]
+        train_parts.append(group[group["source"].isin(train_vids)])
+        test_parts.append(group[group["source"].isin(test_vids)])
+
+    train_df = pd.concat(train_parts).reset_index(drop=True)
+    test_df = pd.concat(test_parts).reset_index(drop=True)
 
     return train_df, test_df
 
