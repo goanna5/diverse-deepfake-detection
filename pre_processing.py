@@ -8,7 +8,6 @@ FRAMES_PER_VID = 5
 def get_df(path_prefix, subset) -> pd.DataFrame:
     """Create dataframe from CSV and preprocess data (remove unneccessary fields, entries, etc.)
     """
-
     if subset:
         df = pd.read_csv("meta_data_subset.csv")
     else:
@@ -20,7 +19,7 @@ def get_df(path_prefix, subset) -> pd.DataFrame:
     # drop unnecessary columns
     df = df.drop(columns=["target1", "target2", "method", "type", "path", "filename"])
 
-    # remove any rows with fake audio (not looking at this)
+    # remove any rows with fake video-real audio, and real video-fake audio
     df = df[df.category != "B"]
     df = df[df.category != "C"]
 
