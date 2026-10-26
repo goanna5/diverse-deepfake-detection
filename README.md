@@ -7,13 +7,13 @@ My Masters Capstone Project codebase!
 - *pipeline.py* - the file containing the segments of the pipeline (excluding preprocessing): methods for applying each image degradation, splitting frames by video, loading models, fine-tuning, evaluating, and predicting.
 - *pre_processing.py* - the file containing the preprocessing the data from the metadata CSV: adding new fields, removing unnecessary fields, and renaming some fields. Also includes code for extracting and (optionally) saving image frames from the videos.
 - *compute_heatmap.py* - the file for creating my visualisations of the data produced: heatmaps and confusion matrices.
-- *meta_data.csv* and *meta_data_subset.csv* - the files containing the dataset metadata, and a subset of the dataset that I made by using the first 2 video ID folders for each combination of gender and ethnicity, and used it for testing that my code actually ran (so I didn't have to run it on the large dataset that FakeAVCeleb is)
+- *meta_data.csv* and *meta_data_subset.csv* - the files containing the dataset metadata, and a subset of the dataset that I made by using the first 2 video ID folders for each combination of gender and ethnicity, and used it for testing that my code actually ran (so I didn't have to run it on the large dataset that FakeAVCeleb is). These aren't actually included in my GitHub repo due to copyright/data use obligations, to access the `meta_data.csv` please request access via https://sites.google.com/view/fakeavcelebdash-lab/dataset-request-usage.
 
 # Referencing
 This work couldn't have been completed without the use of the FakeAVCeleb dataset, thank you so much to the creators for providing access and allowing me to use it in my research.
 
-[1]    H. Khalid, S. Tariq, M. Kim, and S. S. Woo, “FakeAVCeleb: A novel audio-video multimodal deepfake dataset,” in Thirty-fifth Conference on Neural Information 
-        Processing Systems Datasets and Benchmarks Track (Round 2), 2021. Available: https://openreview.net/forum?id=TAXFsg6ZaOl
+[1]    H. Khalid, S. Tariq, M. Kim, and S. S. Woo, “FakeAVCeleb: A novel audio-video multimodal deepfake dataset,” in *Thirty-fifth Conference on Neural Information 
+        Processing Systems Datasets and Benchmarks Track (Round 2)*, 2021. Available: https://openreview.net/forum?id=TAXFsg6ZaOl
 
 
 # AI Referencing
