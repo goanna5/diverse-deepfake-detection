@@ -8,19 +8,19 @@ df = pd.read_csv("/Users/annastevens/Library/Mobile Documents/com~apple~CloudDoc
 def add_balanced_accuracy(r):
     n, acc, prec, rec = r["n"], r["accuracy"], r["precision"], r["recall"]
     if acc == 1.0:   # perfect classification: every frame correct
-        return pd.Series({"tnr": 1.0, "balanced_acc": 1.0, "n_real": float("nan")})
+        return pd.Series({"balanced_acc": 1.0, "n_real": float("nan")})
     denom = rec / prec + 1 - 2 * rec if prec > 0 else 0
     if prec == 0 or rec == 0 or denom == 0:
-        return pd.Series({"tnr": float("nan"), "balanced_acc": float("nan"),
+        return pd.Series({"balanced_acc": float("nan"),
                           "n_real": float("nan")})
     P = n * (1 - acc) / denom               # fake frames
     TP = rec * P
     TN = acc * n - TP
     tnr = min(max(TN / (n - P), 0), 1)
-    return pd.Series({"tnr": tnr, "balanced_acc": (rec + tnr) / 2,
+    return pd.Series({"balanced_acc": (rec + tnr) / 2,
                       "n_real": n - P})
 
-df[["tnr", "balanced_acc", "n_real"]] = df.apply(add_balanced_accuracy, axis=1)
+df[["balanced_acc", "n_real"]] = df.apply(add_balanced_accuracy, axis=1)
 
 # --- fixed orders and display names (keys must match the CSV exactly) ---
 models = ["xception", "efficientnet7", "swin"]
@@ -29,27 +29,12 @@ model_names = {"xception": "XceptionNet", "efficientnet7": "EfficientNet-B7",
 techs = ["clean", "compression", "blur", "resize", "noise"]
 tech_names = [t.capitalize() for t in techs]
 
-print(df.model.unique(), df.technique.unique(), df.race.unique())  # sanity check
-
-# ---------- 1) model x gender heatmap ----------
 gender_df = df[df.gender.isin(["men", "women"]) & (df.race == "all")
                & df.model.isin(models)]
 table = gender_df.pivot_table(index=["model", "gender"], columns="technique",
                               values="balanced_acc")
 table = table.reindex(pd.MultiIndex.from_product([models, ["men", "women"]]))[techs]
 
-plot_t = table.copy()
-plot_t.index = [f"{model_names[m]} | {g}" for m, g in plot_t.index]
-plot_t.columns = tech_names
-
-plt.figure(figsize=(8, 5))
-ax = sns.heatmap(plot_t, annot=True, fmt=".2f", cmap="RdYlGn", vmin=0.0, vmax=1.0,
-                 linewidths=0.5, cbar_kws={"label": "Balanced accuracy (0.5 = chance)"})
-for y in range(2, len(plot_t), 2):
-    ax.axhline(y, color="black", linewidth=2)
-plt.title("Balanced accuracy by model, gender and technique")
-plt.tight_layout()
-plt.show()
 
 # ---------- 2) women - men gap ----------
 diff = table.xs("women", level=1) - table.xs("men", level=1)   # aligned by model/technique
