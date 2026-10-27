@@ -47,7 +47,7 @@ sns.heatmap(diff, annot=True, fmt=".2f", cmap="RdBu", center=0, vmin=-0.15, vmax
 plt.title("Gender gap in balanced accuracy")
 plt.tight_layout()
 plt.savefig("heatmap_gender_diff.png", dpi=200, bbox_inches="tight")
-plt.show()
+# plt.show()
 
 # ---------- 3) model x race x gender, one panel per model ----------
 races = ["African", "Asian (East)", "Asian (South)",
@@ -58,29 +58,33 @@ row_index = pd.MultiIndex.from_tuples(
 race_df = df[df.gender.isin(["men", "women"]) & (df.race != "all")
              & df.model.isin(models)]
 
-fig, axes = plt.subplots(1, 3, figsize=(18, 7), sharey=True)
+fig, axes = plt.subplots(1, 3, figsize=(16, 10), sharey=True)
 for ax, m in zip(axes, models):
     d = race_df[race_df.model == m]
     t = d.pivot_table(index=["race", "gender"], columns="technique",
                       values="balanced_acc").reindex(row_index)[techs]
     nr = d.pivot_table(index=["race", "gender"], columns="technique",
                        values="n_real").reindex(row_index)[techs]
-    t.index = [f"{r} | {g}" for r, g in t.index]
+    t.index = [f"{r} |\n{g}" for r, g in t.index]
     t.columns = tech_names
 
     sns.heatmap(t, ax=ax, annot=True, fmt=".2f", cmap="RdYlGn", vmin=0.0, vmax=1.0,
-                linewidths=0.5, cbar=False, annot_kws={"size": 8})
+                linewidths=0.5, cbar=False, annot_kws={"size": 12})
     for y in range(2, len(t), 2):
         ax.axhline(y, color="black", linewidth=1.5)
-    ax.set_title(model_names[m], fontsize=12)
+    ax.set_title(model_names[m], fontsize=14)
     ax.set_xlabel("")
     ax.set_ylabel("")
+    ax.tick_params(axis="y", labelsize=12)
+    ax.tick_params(axis="x", labelsize=12, labelrotation=90)
 
-fig.colorbar(axes[0].collections[0], ax=axes.tolist(),
+cbar = fig.colorbar(axes[0].collections[0], ax=axes.tolist(),
              label="Balanced accuracy", shrink=0.7)
-fig.suptitle("Balanced accuracy by model, race, gender and technique", fontsize=14)
-# plt.savefig("heatmap_model_race_gender.png", dpi=200, bbox_inches="tight")
-plt.show()
+cbar.set_label("Balanced accuracy", fontsize=14)   # axis title size
+cbar.ax.tick_params(labelsize=12)
+
+plt.savefig("heatmap_model_race_gender.png", dpi=200, bbox_inches="tight")
+# plt.show()
 
 
 
@@ -93,7 +97,8 @@ def confusion_from_metrics(r):
     FN = P - TP
     TN = acc * n - TP
     FP = (n - P) - TN
-    return np.array([[TN, FP], [FN, TP]])
+    cm = np.array([[TN, FP], [FN, TP]])
+    return np.clip(np.round(cm), 0, None) + 0.0
 
 # ---------- 4) confusion matrices: EfficientNet B4 vs B7, clean images ----------
 cmp_models = {"efficientnet4": "EfficientNet-B4",   # <-- check key against your CSV
@@ -106,7 +111,9 @@ for ax, (key, name) in zip(axes, cmp_models.items()):
     assert len(row) == 1, f"{key}: expected 1 row, got {len(row)}"
     cm = confusion_from_metrics(row.iloc[0])
 
-    pct = cm / cm.sum(axis=1, keepdims=True) * 100          # row-normalised (per true class)
+    row_sums = cm.sum(axis=1, keepdims=True)
+    pct = np.divide(cm, row_sums, out=np.zeros_like(cm), where=row_sums > 0) * 100
+    pct = pct + 0.0
     labels = np.array([[f"{cm[i, j]:,.0f}\n({pct[i, j]:.1f}%)" for j in range(2)]
                        for i in range(2)])
 
@@ -117,10 +124,10 @@ for ax, (key, name) in zip(axes, cmp_models.items()):
     ax.set_xlabel("Predicted")
     ax.set_ylabel("Actual")
 
-fig.suptitle("Confusion matrices on clean images", fontsize=14)
+
 plt.tight_layout()
 plt.savefig("confusion_b4_vs_b7_clean.png", dpi=200, bbox_inches="tight")
-plt.show()
+# plt.show()
 
 
 # ---------- 5) confusion matrices ----------
@@ -130,7 +137,7 @@ rows = {"EfficientNet-B7 Clean (Working)": df[(df.model == "efficientnet7") & (d
              & (df.race == "all") & (df.gender == "all")],
         "XceptionNet Blur (All Classified Fake)": df[(df.model == "xception") & (df.technique == "blur")
              & (df.race == "all") & (df.gender == "all")],
-        "EfficientNet-B7 Blur (All Classified Real)": df[(df.model == "efficientnet7") & (df.technique == "blur")
+        "EfficientNet-B7 Blur (Most Classified Real)": df[(df.model == "efficientnet7") & (df.technique == "blur")
              & (df.race == "all") & (df.gender == "all")],
         "XceptionNet Resizing (Working)": df[(df.model == "xception") & (df.technique == "resize")
              & (df.race == "all") & (df.gender == "all")],}
@@ -151,7 +158,7 @@ for ax, (key, row) in zip(axes.flatten(), rows.items()):
     ax.set_xlabel("Predicted")
     ax.set_ylabel("Actual")
 
-fig.suptitle("Confusion matrices", fontsize=14)
+
 plt.tight_layout()
 plt.savefig("confusion_matrices.png", dpi=200, bbox_inches="tight")
-plt.show()
+# plt.show()
