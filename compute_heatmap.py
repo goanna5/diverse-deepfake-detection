@@ -22,7 +22,7 @@ def add_balanced_accuracy(r):
 
 df[["balanced_acc", "n_real"]] = df.apply(add_balanced_accuracy, axis=1)
 
-# --- fixed orders and display names (keys must match the CSV exactly) ---
+
 models = ["xception", "efficientnet7", "swin"]
 model_names = {"xception": "XceptionNet", "efficientnet7": "EfficientNet-B7",
                "swin": "Swin Transformer"}
@@ -36,7 +36,7 @@ table = gender_df.pivot_table(index=["model", "gender"], columns="technique",
 table = table.reindex(pd.MultiIndex.from_product([models, ["men", "women"]]))[techs]
 
 
-# ---------- 2) women - men gap ----------
+# ---------- women - men gap ----------
 diff = table.xs("women", level=1) - table.xs("men", level=1)   # aligned by model/technique
 diff.index = [model_names[m] for m in diff.index]
 diff.columns = tech_names
@@ -46,8 +46,7 @@ sns.heatmap(diff, annot=True, fmt=".2f", cmap="RdBu", center=0, vmin=-0.15, vmax
             cbar_kws={"label": "Balanced accuracy"})
 plt.title("Gender gap in balanced accuracy")
 plt.tight_layout()
-plt.savefig("heatmap_gender_diff.png", dpi=200, bbox_inches="tight")
-# plt.show()
+plt.savefig("image_results/heatmap_gender_diff.png", dpi=200, bbox_inches="tight")
 
 # ---------- 3) model x race x gender, one panel per model ----------
 races = ["African", "Asian (East)", "Asian (South)",
@@ -83,8 +82,7 @@ cbar = fig.colorbar(axes[0].collections[0], ax=axes.tolist(),
 cbar.set_label("Balanced accuracy", fontsize=14)   # axis title size
 cbar.ax.tick_params(labelsize=12)
 
-plt.savefig("heatmap_model_race_gender.png", dpi=200, bbox_inches="tight")
-# plt.show()
+plt.savefig("image_results/heatmap_model_race_gender.png", dpi=200, bbox_inches="tight")
 
 
 
@@ -100,7 +98,7 @@ def confusion_from_metrics(r):
     cm = np.array([[TN, FP], [FN, TP]])
     return np.clip(np.round(cm), 0, None) + 0.0
 
-# ---------- 4) confusion matrices: EfficientNet B4 vs B7, clean images ----------
+# ---------- confusion matrices: EfficientNet B4 vs B7, clean images ----------
 cmp_models = {"efficientnet4": "EfficientNet-B4",   # <-- check key against your CSV
               "efficientnet7": "EfficientNet-B7"}
 
@@ -126,11 +124,10 @@ for ax, (key, name) in zip(axes, cmp_models.items()):
 
 
 plt.tight_layout()
-plt.savefig("confusion_b4_vs_b7_clean.png", dpi=200, bbox_inches="tight")
-# plt.show()
+plt.savefig("image_results/confusion_b4_vs_b7_clean.png", dpi=200, bbox_inches="tight")
 
 
-# ---------- 5) confusion matrices ----------
+# ---------- confusion matrices ----------
 
 
 rows = {"EfficientNet-B7 Clean (Working)": df[(df.model == "efficientnet7") & (df.technique == "clean")
@@ -160,8 +157,7 @@ for ax, (key, row) in zip(axes.flatten(), rows.items()):
 
 
 plt.tight_layout()
-plt.savefig("confusion_matrices.png", dpi=200, bbox_inches="tight")
-# plt.show()
+plt.savefig("image_results/confusion_matrices.png", dpi=200, bbox_inches="tight")
 
 import pandas as pd, numpy as np, matplotlib.pyplot as plt
 
@@ -194,8 +190,10 @@ for a, col, title in zip(ax, ["precision", "BA"],
     a.set_xscale("log")
   
     a.set_title(title)
+
 ax[1].set_xlabel("fake:real ratio for each ethnicity-gender combination")
 ax[0].legend()
+
 plt.tight_layout()
-plt.savefig("ratio_vs_metrics.png", dpi=200)    
+plt.savefig("image_results/ratio_vs_metrics.png", dpi=200)    
 plt.show()
