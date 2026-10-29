@@ -1,19 +1,17 @@
-# STEPS:
-# - apply techniques (compression, blur, resize)
-# - load models from hugging face
-# - fine tune models (hopefully)
-# - run combo of each frame * each model * each technique -> actually do this in main
-# - thats actually quite alot of combos = 160000ish * 5 * 3 * 3... oops
+"""Image degradations, datasets, models and fine-tuning for deepfake detection.
+"""
 
-from PIL import Image, ImageFilter
 import io
-from pre_processing import *
+
+import numpy as np
 import timm
 import torch
+from PIL import Image, ImageFilter
 from torchvision import transforms
-import numpy as np
 
-# Image degradations/corruptions/augmentation
+from pre_processing import *
+
+# Image degradation / corruption / augmentation parameters
 COMPRESSION_QUALITY = 25
 BLUR_RADIUS = 2.0
 RESIZE_SCALE = 0.5
@@ -21,41 +19,82 @@ NOISE_SIGMA = 25
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
+
 def clean(img: Image.Image) -> Image.Image:
-    """No changes made, takes in Pillow Image and returns a copied version unchanged"""
+    """Return an unchanged copy of the image.
+
+    Args:
+        img: Pillow image.
+
+    Returns:
+        A copy of ``img`` with no modifications.
+    """
     return img.copy()
 
-def compress(img: Image.Image, quality: int = COMPRESSION_QUALITY) -> Image.Image:
-    """jpeg compression, pixel values change, dimensions stay the same
-    img: pillow Image
-    quality: Q-factor, 1 (worst) to 95 (best)
+
+def compress(img: Image.Image,
+             quality: int = COMPRESSION_QUALITY) -> Image.Image:
+    """Apply JPEG compression; pixel values change, dimensions stay the same.
+
+    Args:
+        img: Pillow image.
+        quality: JPEG quality factor, from 1 (worst) to 95 (best).
+
+    Returns:
+        The compressed image.
     """
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=quality)
     buf.seek(0)
     return Image.open(buf).copy()
 
+
 def blur(img: Image.Image, radius: float = BLUR_RADIUS) -> Image.Image:
+    """Apply a Gaussian blur to the image.
+
+    Args:
+        img: Pillow image.
+        radius: Standard deviation of the Gaussian kernel.
+
+    Returns:
+        The blurred image.
+    """
     return img.filter(ImageFilter.GaussianBlur(radius=radius))
 
+
 def resize(img: Image.Image, scale: float = RESIZE_SCALE) -> Image.Image:
-    """Could be something to consider using diff types of scaling, I use
-    LANCZOS but could use the others?
-    https://www.geeksforgeeks.org/python/python-pil-image-resize-method/
+    """Downscale the image, then upscale it back to its original size.
+
+    Args:
+        img: Pillow image.
+        scale: Factor by which the image is downscaled (e.g. 0.5 halves
+            each dimension).
+
+    Returns:
+        The degraded image, at the same size as the input.
     """
     width, height = img.size
     small_size = (int(width * scale), int(height * scale))
     downscaled = img.resize(small_size, Image.LANCZOS)
     return downscaled.resize((width, height), Image.LANCZOS)
 
-def gaussian_noise(img: Image.Image, sigma: float = NOISE_SIGMA) -> Image.Image:
-    """ random may need to be moved to where this func is called because it may 
-    not be random each time
+
+def gaussian_noise(img: Image.Image,
+                   sigma: float = NOISE_SIGMA) -> Image.Image:
+    """Add Gaussian noise to the image.
+
+    Args:
+        img: Pillow image (converted to RGB).
+        sigma: Standard deviation of the noise, in pixel intensity units.
+
+    Returns:
+        The noisy RGB image, with pixel values clipped to ``[0, 255]``.
     """
     img_array = np.array(img.convert("RGB")).astype(np.float32)
     noise = np.random.normal(0, sigma, img_array.shape)
     noise_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
     return Image.fromarray(noise_array)
+
 
 AUGMENTATION_TECHNIQUES = {
     "clean": clean,
@@ -70,18 +109,37 @@ LABEL_MAP = {
     "fake": 1,
 }
 
-# dataset
+
 class Dataset(torch.utils.data.Dataset):
+    """Dataset of video frames with a degradation technique applied.
+
+    Each item is loaded from disk, degraded by ``technique``, preprocessed
+    by ``transform`` and returned with its integer label.
+    """
+
     def __init__(self, frames_df, transform, technique, label_map):
+        """Initialise the dataset.
+
+        Args:
+            frames_df: DataFrame with ``frame_filepath`` and ``label``
+                columns, one row per frame.
+            transform: Preprocessing transform applied to each image
+                after the technique.
+            technique: Function taking and returning a Pillow image.
+            label_map: Optional mapping applied on top of ``LABEL_MAP`` to
+                remap class indices, or None to leave them unchanged.
+        """
         self.frames_df = frames_df.reset_index(drop=True)
         self.transform = transform
         self.technique = technique
-        self.label_map = label_map 
+        self.label_map = label_map
 
     def __len__(self):
+        """Return the number of frames in the dataset."""
         return len(self.frames_df)
 
     def __getitem__(self, idx):
+        """Return the transformed image and label tensor at ``idx``."""
         row = self.frames_df.iloc[idx]
 
         img = Image.open(row["frame_filepath"]).convert("RGB")
@@ -95,9 +153,22 @@ class Dataset(torch.utils.data.Dataset):
 
         return img, label
 
-# split videos into train-test before extracting frames to avoid bias
-# additionally, ensure theres equal ratio of real and fake
+
 def split_by_vid(frames_df, test_portion=0.2, seed=42):
+    """Split frames into train and test sets by source video.
+
+    Splitting is done on videos before frames are used, to avoid bias from
+    frames of the same video appearing in both sets. The split is made
+    separately within each label so the real/fake ratio is kept equal.
+
+    Args:
+        frames_df: DataFrame with ``label`` and ``source`` columns.
+        test_portion: Fraction of videos (per label) placed in the test set.
+        seed: Seed for the random number generator, for reproducibility.
+
+    Returns:
+        A tuple ``(train_df, test_df)`` of DataFrames with reset indices.
+    """
     rng = np.random.default_rng(seed)
     train_parts, test_parts = [], []
 
@@ -116,46 +187,75 @@ def split_by_vid(frames_df, test_portion=0.2, seed=42):
     return train_df, test_df
 
 
-# deepfake detection models used Claude to assist with the code for this
-
-## double check xception after gaining access
 def load_xception():
-    """loads XceptionNet with FF++ checkpoint path for weights
+    """Load XceptionNet with a two-class head.
+
+    Returns:
+        The model in eval mode, on ``DEVICE``.
     """
     model = timm.create_model("xception", pretrained=True, num_classes=2)
     model.eval()
     print("XceptionNet loaded!")
     return model.to(DEVICE)
 
+
 def load_efficientnet4():
-    """EfficientNet-B4 from timm with pretrained weights from ImageNet
+    """Load EfficientNet-B4 from timm with ImageNet pretrained weights.
+
+    Returns:
+        The model in eval mode, on ``DEVICE``.
     """
-    model = timm.create_model("efficientnet_b4", pretrained=True, num_classes=2)
+    model = timm.create_model(
+        "efficientnet_b4", pretrained=True, num_classes=2
+    )
 
     model.eval()
     print("EfficientNet-B4 loaded!")
     return model.to(DEVICE)
 
+
 def load_efficientnet7():
-    """EfficientNet-B7 from timm with pretrained weights from ImageNet
+    """Load EfficientNet-B7 from timm with ImageNet pretrained weights.
+
+    Returns:
+        The model in eval mode, on ``DEVICE``.
     """
-    model = timm.create_model("tf_efficientnet_b7", pretrained=True, num_classes=2)
+    model = timm.create_model(
+        "tf_efficientnet_b7", pretrained=True, num_classes=2
+    )
 
     model.eval()
     print("EfficientNet-B7 loaded!")
     return model.to(DEVICE)
 
+
 def load_swin():
-    """Swin Transformer, basically same loading method as efficient net
+    """Load a Swin Transformer from timm (loaded like the EfficientNets).
+
+    Returns:
+        The model in eval mode, on ``DEVICE``.
     """
-    model = timm.create_model("swin_base_patch4_window7_224", pretrained=True, num_classes=2)
+    model = timm.create_model(
+        "swin_base_patch4_window7_224", pretrained=True, num_classes=2
+    )
     model.eval()
     print("Swin Transformer loaded!")
     return model.to(DEVICE)
 
+
 def get_transform_for_timm(model):
-    """preprocessing needed for timm (as its done to all it should be fine bc its 
-    consistent??)
+    """Build the preprocessing transform for a timm model.
+
+    Uses the model's default config, falling back to ImageNet statistics
+    and a 224x224 input size if values are missing. As this is applied to
+    all models in the same way, it should be consistent across them.
+
+    Args:
+        model: A timm model with a ``default_cfg`` attribute.
+
+    Returns:
+        A ``transforms.Compose`` that resizes, converts to a tensor and
+        normalises.
     """
     cfg = model.default_cfg
     mean = cfg.get("mean", (0.485, 0.456, 0.406))
@@ -168,6 +268,7 @@ def get_transform_for_timm(model):
         transforms.Normalize(mean=mean, std=std),
     ])
 
+
 MODELS = {
     "xception": load_xception,
     "efficientnet4": load_efficientnet4,
@@ -175,11 +276,20 @@ MODELS = {
     "swin": load_swin,
 }
 
-# fine tuning so the models are deepfake detectors 
-# (Claude was used to help develop this)
+
 def freeze(model, unfreeze_last_n_params=20):
-    """Freeze all params, unfreeze classifier head,
-    and last n params of backbone
+    """Freeze the model, leaving only the head and last parameters trainable.
+
+    All parameters are frozen, then the classifier head and the last
+    ``unfreeze_last_n_params`` parameters of the backbone are unfrozen.
+
+    Args:
+        model: The model to modify in place.
+        unfreeze_last_n_params: Number of final parameters to unfreeze.
+            If 0 or less, only the classifier head is unfrozen.
+
+    Returns:
+        The same model, with ``requires_grad`` updated.
     """
     for p in model.parameters():
         p.requires_grad = False
@@ -193,9 +303,27 @@ def freeze(model, unfreeze_last_n_params=20):
             p.requires_grad = True
     return model
 
-def fine_tune(model, train_loader, test_loader, epochs=10, lr=1e-4, model_name="model"):
+
+def fine_tune(model, train_loader, test_loader, epochs=10, lr=1e-4,
+              model_name="model"):
+    """Fine-tune a model, saving the checkpoint with the best test accuracy.
+
+    Args:
+        model: The model to train.
+        train_loader: DataLoader yielding ``(images, labels)`` for training.
+        test_loader: DataLoader used to evaluate after each epoch.
+        epochs: Number of training epochs.
+        lr: Learning rate for the Adam optimiser.
+        model_name: Name used in the checkpoint file ``best_<name>.pth``.
+
+    Returns:
+        The model after the final epoch. Note that this is not necessarily
+        the best checkpoint, which is saved to disk separately.
+    """
     model.to(DEVICE)
-    optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
+    optimiser = torch.optim.Adam(
+        filter(lambda p: p.requires_grad, model.parameters()), lr=lr
+    )
     criterion = torch.nn.CrossEntropyLoss()
 
     best_test_acc = 0
@@ -217,8 +345,18 @@ def fine_tune(model, train_loader, test_loader, epochs=10, lr=1e-4, model_name="
 
     return model
 
+
 @torch.no_grad()
 def evaluate(model, loader):
+    """Compute the classification accuracy of a model over a DataLoader.
+
+    Args:
+        model: The model to evaluate.
+        loader: DataLoader yielding ``(images, labels)``.
+
+    Returns:
+        The fraction of samples classified correctly.
+    """
     model.eval()
     correct, total = 0, 0
     for imgs, labels in loader:
@@ -228,9 +366,18 @@ def evaluate(model, loader):
         total += labels.size(0)
     return correct / total
 
+
 @torch.no_grad()
 def predict(model, loader):
-    """creates lists of predications and labels in dataset order"""
+    """Create lists of predictions and labels, in dataset order.
+
+    Args:
+        model: The model used for prediction.
+        loader: DataLoader yielding ``(images, labels)``.
+
+    Returns:
+        A tuple ``(all_preds, all_labels)`` of lists of class indices.
+    """
     model.eval()
     all_preds, all_labels = [], []
     for imgs, labels in loader:
@@ -239,19 +386,3 @@ def predict(model, loader):
         all_preds.extend(preds.cpu().tolist())
         all_labels.extend(labels.cpu().tolist())
     return all_preds, all_labels
-
-if __name__ == "__main__":
-    pass
-    # frames = get_frames(subset=True, save_imgs=False)
-    # with Image.open(frames.iloc[0]['frame_filepath']) as im:
-    #     new = resize(im)
-    # eff_net = load_efficientnet()
-    # eff_net = freeze(eff_net, unfreeze_last_n_params=20)
-    # transform = get_transform_for_timm(eff_net)
-
-    # train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
-    # test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
-    # print(fine_tune(eff_net, train_loader, test_loader))
-    # # print(frames.iloc[0, 5])
-    # # print(type(Image.open(frames.iloc[0, 5])))
-    # # print(type(frames.iloc[0, 7]))

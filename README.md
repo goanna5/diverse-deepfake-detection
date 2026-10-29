@@ -20,6 +20,7 @@ This work couldn't have been completed without the use of the FakeAVCeleb datase
 
 *main.py* 
 - Claude Sonnet 5.5 was used to help with making and implementing (via code scaffold) the weighted random sampler to balance the imbalance in the dataset (16th September 2026).
+- Claude Sonnet 5.5 was used to style the code (copy pasted, and asked it to rewrite the exact same code but with good styling, inc. comments and docstrings according to PEP) (29th October 2026).
 
 
 *pipeline.py*
@@ -27,17 +28,20 @@ This work couldn't have been completed without the use of the FakeAVCeleb datase
 - Claude Sonnet 4.6 was also used for the `get_transform_for_timm` function, to ensure all models were consistent for timm (23rd April 2026).
 - Claude Sonnet 4.6, Claude Sonnet 5, and GitHub Copilot for auto complete were used in the `freeze`, `fine_tune`, `evaluate`, and `predict` functions to outline code scaffolding that was later modified
 somewhat (23rd April 2026-18th August 2026).
+- Claude Sonnet 5.5 was used to style the code (copy pasted, and asked it to rewrite the exact same code but with good styling, inc. comments and docstrings according to PEP) (29th October 2026).
 
 
 *pre_processing.py*
 - Claude Sonnet 4.6 was used to help make part of the `extract_img_frames` function (23rd April 2026).
 - Claude Sonnet 4.6 was used to help enumerate through the dataset using tqdm for nice loading in `extract_all_img_frames` (23rd April 2026).
+- Claude Sonnet 5.5 was used to style the code (copy pasted, and asked it to rewrite the exact same code but with good styling, inc. comments and docstrings according to PEP) (29th October 2026).
 
 
 *visualise_results.py*
 - Claude Sonnet 5.5 was used pretty extensively throughout the whole file to make CSV data into nice looking heatmaps, graphs, and confusion matrices (not my strong suit sorry), although I
 did modify some code to avoid unnecessary things I thought werent relevant e.g. making a list to iterate over 2 things to avoid repeated code and making a whole dictionary etc etc in the
 process (16th October 2026-29th October 2026).
+- Claude Sonnet 5.5 was used to style the code (copy pasted, and asked it to rewrite the exact same code but with good styling, inc. comments and docstrings according to PEP) (29th October 2026).
 
 
 In all these files, at times I encountered syntax errors, file IO related errors, and errors with packages/libraries not being installed, and Claude Sonnet 5 or 5.5 was used to 
