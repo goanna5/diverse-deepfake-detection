@@ -6,7 +6,7 @@ My Masters Capstone Project codebase!
 - *main.py* - the main file that puts it all together: fetches image frame data, fine-tunes the models, runs the pipeline, computes and saves results.
 - *pipeline.py* - the file containing the segments of the pipeline (excluding preprocessing): methods for applying each image degradation, splitting frames by video, loading models, fine-tuning, evaluating, and predicting.
 - *pre_processing.py* - the file containing the preprocessing the data from the metadata CSV: adding new fields, removing unnecessary fields, and renaming some fields. Also includes code for extracting and (optionally) saving image frames from the videos.
-- *compute_heatmap.py* - the file for creating my visualisations of the data produced: heatmaps and confusion matrices.
+- *visualise_results.py* - the file for creating my visualisations of the data produced: heatmaps and confusion matrices.
 - *meta_data.csv* and *meta_data_subset.csv* - the files containing the dataset metadata, and a subset of the dataset that I made by using the first 2 video ID folders for each combination of gender and ethnicity, and used it for testing that my code actually ran (so I didn't have to run it on the large dataset that FakeAVCeleb is). These aren't actually included in my GitHub repo due to copyright/data use obligations, to access the `meta_data.csv` please request access via https://sites.google.com/view/fakeavcelebdash-lab/dataset-request-usage.
 
 # Referencing
@@ -34,8 +34,8 @@ somewhat (23rd April 2026-18th August 2026).
 - Claude Sonnet 4.6 was used to help enumerate through the dataset using tqdm for nice loading in `extract_all_img_frames` (23rd April 2026).
 
 
-*compute_heatmap.py*
-- Claude Sonnet 5.5 was used pretty extensively throughout the whole file to make CSV data into nice looking heatmaps and confusion matrices (not my strong suit sorry), although I
+*visualise_results.py*
+- Claude Sonnet 5.5 was used pretty extensively throughout the whole file to make CSV data into nice looking heatmaps, graphs, and confusion matrices (not my strong suit sorry), although I
 did modify some code to avoid unnecessary things I thought werent relevant e.g. making a list to iterate over 2 things to avoid repeated code and making a whole dictionary etc etc in the
 process (16th October 2026-29th October 2026).
 
