@@ -162,3 +162,40 @@ for ax, (key, row) in zip(axes.flatten(), rows.items()):
 plt.tight_layout()
 plt.savefig("confusion_matrices.png", dpi=200, bbox_inches="tight")
 # plt.show()
+
+import pandas as pd, numpy as np, matplotlib.pyplot as plt
+
+r = pd.read_csv("/Users/annastevens/Library/Mobile Documents/com~apple~CloudDocs/Documents/2026-Sem2/CYBR7902/Initial results/final_results_1789616371.2015939.csv")
+c = r[(r.race != "all") & (r.gender != "all") & (r.model != "efficientnet4")].copy()
+
+# invert your Eq. 4.1-4.4 to recover real/fake frame counts per cell
+D = c.recall / c.precision + 1 - 2 * c.recall
+c["P"] = (c.n * (1 - c.accuracy) / D).round()      # fake frames
+c["R"] = c.n - c.P                                  # real frames
+c["ratio"] = c.P / c.R
+c["TNR"] = ((c.accuracy * c.n - c.recall * c.P) / c.R).clip(0, 1)
+c["BA"] = (c.recall + c.TNR) / 2
+collapsed_techniques = ["compression", "blur", "noise"]
+
+c["collapsed"] = (
+    c["technique"].isin(collapsed_techniques)
+    | ((c["model"] == "swin") & (c["technique"] == "resize"))
+)
+
+x = np.logspace(np.log10(c.ratio.min()), np.log10(c.ratio.max()), 100)
+fig, ax = plt.subplots(2, 1, figsize=(7, 10), sharex=True)
+for a, col, title in zip(ax, ["precision", "BA"],
+                         ["Precision", "Balanced accuracy"]):
+    for flag, colour, lab in [(True, "tab:red", "collapsed"), (False, "tab:blue", "working")]:
+        s = c[c.collapsed == flag]
+        a.scatter(s.ratio, s[col], c=colour, alpha=.6, s=18, label=lab)
+    if col != "BA":
+        a.plot(x, x / (x + 1), "k--", lw=1, label="always-predict-fake")
+    a.set_xscale("log")
+  
+    a.set_title(title)
+ax[1].set_xlabel("fake:real ratio for each ethnicity-gender combination")
+ax[0].legend()
+plt.tight_layout()
+plt.savefig("ratio_vs_metrics.png", dpi=200)    
+plt.show()
